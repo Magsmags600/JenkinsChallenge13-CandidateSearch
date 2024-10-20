@@ -1,3 +1,4 @@
+// Simple error page for when a route is not found
 const ErrorPage = () => {
   return (
     <section>
