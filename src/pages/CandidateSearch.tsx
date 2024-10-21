@@ -1,70 +1,70 @@
 import { useState, useEffect } from 'react';
-import { searchGithub } from '../api/API';
-import { Candidate } from '../interfaces/Candidate.interface'; // Consistent casing
+import { searchGithub } from '../api/API'; // Use the searchGithub function
+import { Candidate } from '../interfaces/Candidate.interface'; // Import the Candidate interface
 
 const CandidateSearch = () => {
-  const [candidate, setCandidate] = useState<Candidate | null>(null);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]); // Store the list of candidates
+  const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0); // Track the current candidate being displayed
+  const [loading, setLoading] = useState(true); // Handle loading state
+  const [error, setError] = useState<string | null>(null); // Handle error messages
 
+  // Fetch multiple candidates from the GitHub API
   useEffect(() => {
     const fetchCandidates = async () => {
+      setLoading(true);
       try {
-        const data = await searchGithub();
-        setCandidates(data);
+        const data = await searchGithub(); // Fetch candidates
+        setCandidates(data); // Set the fetched candidates
+        setCurrentCandidateIndex(0); // Reset the current candidate index
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch candidates.');
         setLoading(false);
       }
     };
+
     fetchCandidates();
-  }, []);
+  }, []); // Fetch candidates when the component mounts
 
-  const loadNextCandidate = () => {
-    if (candidates.length > 0) {
-      const nextCandidate = candidates.shift();
-      setCandidate(nextCandidate || null);
-    } else {
-      setCandidate(null);
+  // Move to the next candidate
+  const nextCandidate = () => {
+    if (currentCandidateIndex < candidates.length - 1) {
+      setCurrentCandidateIndex(currentCandidateIndex + 1);
     }
   };
 
-  const saveCandidate = () => {
-    if (candidate) {
-      const savedCandidates = JSON.parse(localStorage.getItem('savedCandidates') || '[]');
-      savedCandidates.push(candidate);
-      localStorage.setItem('savedCandidates', JSON.stringify(savedCandidates));
+  // Move to the previous candidate
+  const previousCandidate = () => {
+    if (currentCandidateIndex > 0) {
+      setCurrentCandidateIndex(currentCandidateIndex - 1);
     }
-    loadNextCandidate();
   };
 
-  const skipCandidate = () => {
-    loadNextCandidate();
-  };
+  const currentCandidate = candidates[currentCandidateIndex]; // The candidate currently being displayed
 
   return (
     <div>
       <h1>Candidate Search</h1>
       {loading && <p>Loading...</p>}
       {error && <p>{error}</p>}
-      {candidate ? (
+
+      {/* Display the current candidate's information */}
+      {currentCandidate ? (
         <div>
-          <img src={candidate.avatar_url} alt="Candidate Avatar" />
-          <p>Name: {candidate.name || 'N/A'}</p>
-          <p>Username: {candidate.login}</p>
-          <p>Location: {candidate.location || 'N/A'}</p>
-          <p>Email: {candidate.email || 'N/A'}</p>
-          <p>Company: {candidate.company || 'N/A'}</p>
-          <a href={candidate.html_url}>GitHub Profile</a>
+          <img src={currentCandidate.avatar_url} alt="Candidate Avatar" />
+          <p>Name: {currentCandidate.login}</p>
+          <a href={currentCandidate.html_url}>GitHub Profile</a>
           <div>
-            <button onClick={saveCandidate}>+</button>
-            <button onClick={skipCandidate}>-</button>
+            <button onClick={previousCandidate} disabled={currentCandidateIndex === 0}>
+              Previous
+            </button>
+            <button onClick={nextCandidate} disabled={currentCandidateIndex === candidates.length - 1}>
+              Next
+            </button>
           </div>
         </div>
       ) : (
-        <p>No more candidates available.</p>
+        <p>No candidates available.</p>
       )}
     </div>
   );
