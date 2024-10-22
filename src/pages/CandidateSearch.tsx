@@ -1,72 +1,85 @@
 import { useState, useEffect } from 'react';
-import { searchGithub } from '../api/API'; // Use the searchGithub function
-import { Candidate } from '../interfaces/Candidate.interface'; // Import the Candidate interface
+import { searchGithub, searchGithubUser } from '../api/API'; 
+import { Candidate } from '../interfaces/Candidate.interface';
 
 const CandidateSearch = () => {
-  const [candidates, setCandidates] = useState<Candidate[]>([]); // Store the list of candidates
-  const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0); // Track the current candidate being displayed
-  const [loading, setLoading] = useState(true); // Handle loading state
-  const [error, setError] = useState<string | null>(null); // Handle error messages
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [currentCandidate, setCurrentCandidate] = useState<Candidate | null>(null);
+  const [noMoreCandidates, setNoMoreCandidates] = useState(false);
 
-  // Fetch multiple candidates from the GitHub API
+  // Fetch candidates and detailed information
   useEffect(() => {
     const fetchCandidates = async () => {
-      setLoading(true);
-      try {
-        const data = await searchGithub(); // Fetch candidates
-        setCandidates(data); // Set the fetched candidates
-        setCurrentCandidateIndex(0); // Reset the current candidate index
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch candidates.');
-        setLoading(false);
+      const data = await searchGithub();
+      if (data.length > 0) {
+        const detailedData = await Promise.all(
+          data.map((candidate: Candidate) => searchGithubUser(candidate.login))
+        );
+        console.log("Detailed Data:", detailedData); // Debugging the detailed data
+        setCandidates(detailedData);
+        setCurrentCandidate(detailedData[0]);
+      } else {
+        setNoMoreCandidates(true);
       }
     };
-
     fetchCandidates();
-  }, []); // Fetch candidates when the component mounts
+  }, []);
 
-  // Move to the next candidate
-  const nextCandidate = () => {
-    if (currentCandidateIndex < candidates.length - 1) {
-      setCurrentCandidateIndex(currentCandidateIndex + 1);
+  const handleSaveCandidate = () => {
+    if (currentCandidate) {
+      const savedCandidates = JSON.parse(localStorage.getItem('savedCandidates') || '[]');
+      const isAlreadySaved = savedCandidates.some(
+        (candidate: Candidate) => candidate.id === currentCandidate.id
+      );
+      if (!isAlreadySaved) {
+        localStorage.setItem(
+          'savedCandidates',
+          JSON.stringify([...savedCandidates, currentCandidate])
+        );
+      }
+    }
+    showNextCandidate();
+  };
+
+  const showNextCandidate = () => {
+    if (candidates.length > 1) {
+      const [, ...rest] = candidates;
+      setCandidates(rest);
+      setCurrentCandidate(rest[0]);
+    } else {
+      setNoMoreCandidates(true);
+      setCurrentCandidate(null);
     }
   };
 
-  // Move to the previous candidate
-  const previousCandidate = () => {
-    if (currentCandidateIndex > 0) {
-      setCurrentCandidateIndex(currentCandidateIndex - 1);
-    }
+  const getCandidateInfo = (field: string | null | undefined, fallback: string) => {
+    return field && field.trim() !== "" ? field : fallback;
   };
-
-  const currentCandidate = candidates[currentCandidateIndex]; // The candidate currently being displayed
 
   return (
-    <div>
-      <h1>Candidate Search</h1>
-      {loading && <p>Loading...</p>}
-      {error && <p>{error}</p>}
-
-      {/* Display the current candidate's information */}
-      {currentCandidate ? (
+    <section>
+      {noMoreCandidates ? (
+        <h2>No more candidates available</h2>
+      ) : currentCandidate ? (
         <div>
-          <img src={currentCandidate.avatar_url} alt="Candidate Avatar" />
-          <p>Name: {currentCandidate.login}</p>
-          <a href={currentCandidate.html_url}>GitHub Profile</a>
+          <img src={currentCandidate.avatar_url} alt={`${currentCandidate.name || 'Name not available'}'s avatar`} />
+          <h2>{getCandidateInfo(currentCandidate.name, 'Name not available')}</h2>
+          <p>Username: {currentCandidate.login}</p>
+          <p>Location: {getCandidateInfo(currentCandidate.location, 'Location not available')}</p>
+          <p>Email: {getCandidateInfo(currentCandidate.email, 'Email not available')}</p>
+          <p>Company: {getCandidateInfo(currentCandidate.company, 'Company not available')}</p>
+          <a href={currentCandidate.html_url} target="_blank" rel="noopener noreferrer">
+            View GitHub Profile
+          </a>
           <div>
-            <button onClick={previousCandidate} disabled={currentCandidateIndex === 0}>
-              Previous
-            </button>
-            <button onClick={nextCandidate} disabled={currentCandidateIndex === candidates.length - 1}>
-              Next
-            </button>
+            <button onClick={handleSaveCandidate}>Save Candidate</button>
+            <button onClick={showNextCandidate}>Skip Candidate</button>
           </div>
         </div>
       ) : (
-        <p>No candidates available.</p>
+        <h2>Loading candidate...</h2>
       )}
-    </div>
+    </section>
   );
 };
 

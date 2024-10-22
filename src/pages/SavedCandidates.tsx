@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Candidate } from '../interfaces/Candidate.interface'; // Ensure the Candidate interface is correctly imported
+import { useState, useEffect } from 'react';
+import { Candidate } from '../interfaces/Candidate.interface'; 
 
 const SavedCandidates = () => {
   const [savedCandidates, setSavedCandidates] = useState<Candidate[]>([]);
@@ -7,25 +7,33 @@ const SavedCandidates = () => {
   // Fetch saved candidates from localStorage when the component mounts
   useEffect(() => {
     const candidates = JSON.parse(localStorage.getItem('savedCandidates') || '[]');
-    setSavedCandidates(candidates); // Set the fetched candidates in state
+    console.log("Saved Candidates:", candidates); // Log the saved data
+    setSavedCandidates(candidates); 
   }, []);
 
   return (
-    <div>
+    <section>
       <h1>Potential Candidates</h1>
-      {/* If there are saved candidates, display them */}
       {savedCandidates.length > 0 ? (
-        savedCandidates.map((candidate, index) => (
-          <div key={index}>
-            <img src={candidate.avatar_url} alt="Candidate Avatar" />
-            <p>Name: {candidate.login}</p>
-            <a href={candidate.html_url}>GitHub Profile</a>
-          </div>
-        ))
+        <ul>
+          {savedCandidates.map((candidate) => (
+            <li key={candidate.id}>
+              <img src={candidate.avatar_url} alt={`${candidate.name || 'Name not available'}'s avatar`} />
+              <h2>{candidate.name || 'Name not available'}</h2>
+              <p>Username: {candidate.login}</p>
+              <p>Location: {candidate.location || 'Location not available'}</p>
+              <p>Email: {candidate.email || 'Email not available'}</p>
+              <p>Company: {candidate.company || 'Company not available'}</p>
+              <a href={candidate.html_url} target="_blank" rel="noopener noreferrer">
+                View GitHub Profile
+              </a>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <p>No saved candidates.</p> // Message if no candidates are saved
+        <h2>No candidates have been saved</h2>
       )}
-    </div>
+    </section>
   );
 };
 
